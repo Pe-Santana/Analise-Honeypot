@@ -1,4 +1,3 @@
-
 import os
 import gzip
 import pandas as pd #2.1.0
@@ -74,6 +73,7 @@ def trata_arq(path):
                 processar_logs(os.path.join(pasta_path, subpasta))
             except:
                 continue
+
 def cria_df(path):
     """
     Percorre o diretório base e suas subpastas, procurando arquivos .log dentro de pastas 'tratados'.
@@ -105,20 +105,19 @@ def cria_df(path):
 
     return df_final
 
+def log_df(path):
+    """
+    Cria o DataFrame a partir dos arquivos de log em um diretório.
+    Se o DataFrame estiver vazio, retorna None.
+    """
+    trata_arq(path)
+    df = cria_df(path)
+    if df.empty:
+        print("Nenhum arquivo de log encontrado.")
+        return None
+    return df
+
 # -------- Funções de visualização --------
-def acesso_dia(df):
-    """
-    Exibe gráfico de barras com a frequência de acessos por dia.
-    """
-    plt.figure(figsize=(25, 5))
-    df_temp = df.groupby(df['data'].dt.strftime('%d/%m')).size()
-    df_temp.index = pd.to_datetime(df_temp.index, format='%d/%m')
-    df_temp = df_temp.sort_index()
-    df_temp.index = df_temp.index.strftime('%d/%m')
-    colors = plt.cm.RdYlGn((df_temp - df_temp.min()) / (df_temp.max() - df_temp.min()))
-    df_temp.plot(kind='bar', title='Acessos por dia', color=colors)
-    plt.xticks(rotation=45)
-    plt.show()
 
 def ip_dia(df, ip):
     """
@@ -147,40 +146,7 @@ def ip_dia(df, ip):
     plt.grid(True)
     plt.show()
 
-def acesso_fonte(df):
-    """
-    Exibe gráfico de pizza com a distribuição de entradas por fonte (honeypot).
-    """
-    counts = df['source'].value_counts()
-    plt.figure(figsize=(20, 15))
-    fig, ax = plt.subplots()
-    wedges, texts, autotexts = ax.pie(counts, autopct='%1.1f%%', textprops={'fontsize': 10})
-    ax.legend(wedges, counts.index, title="Sources", loc="center left", bbox_to_anchor=(1, 0.5))
-    plt.title('Ataques por Honeypot')
-    plt.show()
-
-def top_ips(df):
-    """
-    Exibe gráfico de barras com os 5 IPs que mais acessaram os honeypots.
-    """
-    plt.figure(figsize=(10, 5))
-    df['ip'].value_counts().head(5).plot(kind='bar', title='Top 5 IPs com mais acessos', color='orange')
-    plt.xlabel('IP')
-    plt.ylabel('Quantidade de Acessos')
-    plt.xticks(rotation=0)
-    for p in plt.gca().patches:
-        plt.gca().annotate(f'{int(p.get_height())}',
-                           (p.get_x() + p.get_width() / 2, p.get_height() / 2),
-                           ha='center', va='center', fontsize=10, fontweight='bold', color='black')
-    plt.grid(axis='y', linestyle='--', alpha=0.2)
-    plt.show()
-
-
-#--------------testes funcoes de visualizacao----------------
-
-
-
-def acesso_dia2(df1, df2=None):
+def acesso_dia(df1, df2=None):
     def agrupar_por_dia(df):
         dados = df.groupby(df['data'].dt.normalize()).size()  # Mantém datetime completo (sem hora)
         dados = dados.sort_index()
@@ -240,7 +206,7 @@ def acesso_dia2(df1, df2=None):
         plt.tight_layout()
         plt.show()
 
-def acesso_fonte2(df1, df2=None):
+def acesso_fonte(df1, df2=None):
     """
     Exibe gráfico de pizza com a distribuição de entradas por fonte (honeypot).
     Se dois DataFrames forem fornecidos, exibe dois gráficos lado a lado.
@@ -262,8 +228,7 @@ def acesso_fonte2(df1, df2=None):
     plt.tight_layout()
     plt.show()
 
-
-def top_ips2(df1, df2=None):
+def top_ips(df1, df2=None):
     """
     Exibe gráfico de barras com os IPs mais ativos presentes em ambos os DataFrames (se dois forem fornecidos).
     Se apenas um for fornecido, mostra os 5 IPs com mais acessos.
@@ -304,32 +269,3 @@ def top_ips2(df1, df2=None):
     plt.grid(axis='y', linestyle='--', alpha=0.2)
     plt.show()
 
-
-def ip_dia2( ip,df1, df2=None):
-    """
-    Exibe gráfico de linha com os acessos diários de um IP específico.
-    Se dois DataFrames forem fornecidos, compara os acessos entre eles.
-    """
-    def plot_por_df(df, label_prefix, linestyle):
-        df_temp = df[df['ip'] == ip]
-        all_days = pd.date_range(start=df['data'].min(), end=df['data'].max(), freq='D')
-        for i, hp in enumerate(df_temp['source'].unique()):
-            df_hp = df_temp[df_temp['source'] == hp]
-            df_hp = df_hp.groupby(df_hp['data'].dt.date).size().reindex(all_days.date, fill_value=0)
-            plt.plot(all_days, df_hp, marker='o', linestyle=linestyle,
-                     label=f'{label_prefix}-{hp.split("honeycam-")[-1]}', alpha=0.6)
-
-    plt.figure(figsize=(25, 5))
-    plot_por_df(df1, "DF1", "-")
-
-    if df2 is not None:
-        plot_por_df(df2, "DF2", "--")
-
-    plt.xlabel('Data')
-    plt.ylabel('Número de Acessos')
-    plt.title(f'Acessos por dia para o IP {ip}')
-    plt.xticks(rotation=45)
-    plt.gca().yaxis.set_major_locator(mtick.MaxNLocator(integer=True))
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.grid(True)
-    plt.show()
